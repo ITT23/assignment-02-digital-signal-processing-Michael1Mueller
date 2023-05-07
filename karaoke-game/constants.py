@@ -13,8 +13,17 @@ WINDOW_WIDTH = 400
 WINDOW_HEIGHT = 400
 
 FONT_SIZE = 32
+FONT_SIZE_SMALL = 8
+# range for detect similarity
+ACCEPTANCE_RANGE = 10
 
-ACCEPTANCE_RANGE = 30
+# guitar strings frequencies https://de.wikipedia.org/wiki/Stimmen_einer_Gitarre
+HIGH_E = 330
+H = 246
+G = 196
+D = 146
+A = 110
+LOW_E = 82
 
 path_background = os.path.join(".", "images", "singing.png")
 path_wave = os.path.join(".", "sounds", "correct.wav")
