@@ -1,14 +1,17 @@
+import numpy.fft
 import pyaudio
 import numpy as np
 from matplotlib import pyplot as plt
+from scipy import signal
 
 # Set up audio stream
 # reduce chunk size and sampling rate for lower latency
-CHUNK_SIZE = 1024  # Number of audio frames per buffer
+CHUNK_SIZE = 1024   # Number of audio frames per buffer
 FORMAT = pyaudio.paInt16  # Audio format
 CHANNELS = 1  # Mono audio
 RATE = 44100  # Audio sampling rate (Hz)
 p = pyaudio.PyAudio()
+
 
 # print info about audio devices
 # let user select audio device
@@ -39,14 +42,35 @@ ax.set_ylim(-30000, 30000)
 plt.ion()
 plt.show()
 
-# continuously capture and plot audio singal
+kernel = signal.gaussian(20, 10)  # create a kernel
+kernel /= np.sum(kernel)  # normalize the kernel so it does not affect the signal's amplitude
+
+print(f"kernel: {kernel}")
+# continuously capture and plot audio signal
 while True:
     # Read audio data from stream
     data = stream.read(CHUNK_SIZE)
 
     # Convert audio data to numpy array
     data = np.frombuffer(data, dtype=np.int16)
-    line.set_ydata(data)
+    data2 = np.convolve(data, kernel, 'same')  # apply the kernel to the signal
+    line.set_ydata(data2)
+    # print(f"data: {data}")
+    spectrum = np.abs(np.fft.fft(data2))
+
+    frequencies = np.fft.fftfreq(len(data2), 1/CHUNK_SIZE)
+
+    mask = frequencies >= 0
+
+    spectrum = spectrum[mask]
+    frequencies = frequencies[mask]
+    # print(f"spectrum: {spectrum}")
+    # print(f"frequencies: {frequencies}")
+
+    main_freq_index = np.argmax(spectrum)
+    # print(f"main Index: {main_freq_index}")
+    print(f"main Frequency: {frequencies[main_freq_index]}")
+
 
     # Redraw plot
     fig.canvas.draw()
