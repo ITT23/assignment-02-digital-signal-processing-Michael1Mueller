@@ -1,14 +1,12 @@
 import random
-
 import numpy.fft
 import pyaudio
 import numpy as np
-from matplotlib import pyplot as plt
 from scipy import signal
 import pyglet
 from pyglet import window
 from constants import WINDOW_HEIGHT, WINDOW_WIDTH, RATE, FORMAT, CHANNELS, CHUNK_SIZE, batch, path_background, FONT_SIZE, \
-                      ACCEPTANCE_RANGE, path_wave
+                      ACCEPTANCE_RANGE, path_wave, LOW_E, A, D, G, H, HIGH_E, FONT_SIZE_SMALL
 import wave
 
 p = pyaudio.PyAudio()
@@ -27,7 +25,18 @@ background_img = pyglet.image.load(path_background)
 background = pyglet.sprite.Sprite(background_img, x=0, y=0, batch=batch, group=background)
 
 freq_to_reach_label = pyglet.text.Label(text=f"Diese Frequenz gilt es zu erreichen: {freq_to_reach}Hz", x=10, y=380,
-                                    color=(0, 0, 0, 255), batch=batch, group=foreground)
+                                        color=(0, 0, 0, 255), batch=batch, group=foreground)
+
+guitar_label_1 = pyglet.text.Label(text="Mit den Zahlen 1-6 kannst du alle Frequenzen einer gestimmten Gitarre auswählen."
+                                   , x=10, y=360, font_size=FONT_SIZE_SMALL, color=(0, 0, 0, 255), batch=batch,
+                                   group=foreground)
+
+guitar_label_2 = pyglet.text.Label(text="Die 1 repräsentiert dabei die Frequenz der obersten (tiefsten) Seite und "
+                                   , x=10, y=340, font_size=FONT_SIZE_SMALL, color=(0, 0, 0, 255), batch=batch,
+                                   group=foreground)
+
+guitar_label_3 = pyglet.text.Label(text="die 6 die der Höchsten", x=10, y=320, font_size=FONT_SIZE_SMALL,
+                                   color=(0, 0, 0, 255), batch=batch, group=foreground)
 
 freq_actual_label_static = pyglet.text.Label(text="Deine aktuelle Frequenz: ", x=110, y=220,
                                              color=(0, 0, 0, 255), batch=batch, group=foreground)
@@ -47,8 +56,27 @@ def on_draw():
 
 @window.event
 def on_key_press(symbol, modifiers):
+    global freq_to_reach
     if symbol == pyglet.window.key.Q:
         window.close()
+    if symbol == pyglet.window.key._1:
+        freq_to_reach = LOW_E
+        freq_to_reach_label.text = f"Diese Frequenz gilt es zu erreichen: {freq_to_reach}Hz"
+    if symbol == pyglet.window.key._2:
+        freq_to_reach = A
+        freq_to_reach_label.text = f"Diese Frequenz gilt es zu erreichen: {freq_to_reach}Hz"
+    if symbol == pyglet.window.key._3:
+        freq_to_reach = D
+        freq_to_reach_label.text = f"Diese Frequenz gilt es zu erreichen: {freq_to_reach}Hz"
+    if symbol == pyglet.window.key._4:
+        freq_to_reach = G
+        freq_to_reach_label.text = f"Diese Frequenz gilt es zu erreichen: {freq_to_reach}Hz"
+    if symbol == pyglet.window.key._5:
+        freq_to_reach = H
+        freq_to_reach_label.text = f"Diese Frequenz gilt es zu erreichen: {freq_to_reach}Hz"
+    if symbol == pyglet.window.key._6:
+        freq_to_reach = HIGH_E
+        freq_to_reach_label.text = f"Diese Frequenz gilt es zu erreichen: {freq_to_reach}Hz"
 
 
 def get_random_freq():
@@ -74,16 +102,14 @@ def play_sound():
                         rate=wf.getframerate(),
                         output=True)
 
-    # read data (based on the chunk size)
     data = wf.readframes(CHUNK_SIZE)
 
-    # play stream (looping from beginning of file to the end)
     while data:
-        # writing to the stream is what *actually* plays the sound.
         wav_stream.write(data)
         data = wf.readframes(CHUNK_SIZE)
 
     wf.close()
+
 
 # print info about audio devices
 # let user select audio device
@@ -129,9 +155,14 @@ def read_audio_stream(dt):
     spectrum = spectrum[mask]
     frequencies = frequencies[mask]
 
+    # get main frequency
     main_freq_index = np.argmax(spectrum)
     actual_freq = frequencies[main_freq_index]
+
+    # check for similarity in signal
     compare_freqs(actual_freq)
+
+    # update input frequency
     freq_actual_label.text = f"{int(actual_freq)} Hz"
 
 

@@ -115,7 +115,6 @@ stream = p.open(format=FORMAT,
                 input_device_index=input_device)
 
 
-
 # from exercise notebook
 kernel = signal.gaussian(20, 10)
 kernel /= np.sum(kernel)
