@@ -1,66 +1,20 @@
 import pyaudio
 import numpy as np
-from matplotlib import pyplot as plt
 import pyglet
 from pyglet import window
 from scipy import signal
-
-# Set up audio stream
-# reduce chunk size and sampling rate for lower latency
-CHUNK_SIZE = 1024  # Number of audio frames per buffer
-FORMAT = pyaudio.paInt16  # Audio format
-CHANNELS = 1  # Mono audio
-RATE = 44100  # Audio sampling rate (Hz)
-# Pyglet initialization
-WINDOW_WIDTH = 100
-WINDOW_HEIGHT = 300
+from pynput.keyboard import Key, Controller
+from Rect import Rect
+from constants import batch, WINDOW_HEIGHT, WINDOW_WIDTH, RATE, FORMAT, CHUNK_SIZE, CHANNELS
 
 # freq array for comparing values
 freq_array = []
 
+# for pynput
+keyboard = Controller()
 
 p = pyaudio.PyAudio()
 window = window.Window(WINDOW_WIDTH, WINDOW_HEIGHT)
-batch = pyglet.graphics.Batch()
-
-
-class Rect:
-    rectangles = []
-
-    def __init__(self, x, y, width=66, height=33):
-        self.x = x
-        self.y = y
-        self.color = (255, 0, 0)  # standard color
-        self.checked_color = (0, 255, 0)  # color when checked
-        self.shape = pyglet.shapes.Rectangle(self.x, self.y, width, height, color=self.color, batch=batch)
-        self.checked = False
-
-    def draw_rects():
-        for rect in Rect.rectangles:
-            rect.draw()
-
-    def create_rect(x, y):
-        Rect.rectangles.append(Rect(x, y))
-
-
-    def change_check(self):
-        if self.checked:
-            self.checked = False
-            self.shape.color = self.color
-        else:
-            self.checked = True
-            self.shape.color = self.checked_color
-        Rect.draw_rects()
-
-    def get_index_of_checked():
-        for rect in Rect.rectangles:
-            if rect.checked:
-                for i in range(len(Rect.rectangles)):
-                    if Rect.rectangles[i] == rect:
-                        return i
-
-    def draw(self):
-        self.shape.draw()
 
 
 @window.event
@@ -74,11 +28,9 @@ def create_rectangles():
     y_pos = WINDOW_HEIGHT/7
     for i in range(5):
         Rect.create_rect(x_pos, y_pos)
-        print(f"Stelle: {i} y: {y_pos}")
         y_pos += x_pos * 2
     Rect.draw_rects()
-    Rect.rectangles[0].check()
-    print(len(Rect.rectangles))
+    Rect.rectangles[0].change_check()
 
 
 create_rectangles()
@@ -100,17 +52,17 @@ def check_whistle():
         return
 
     for i in range(len(freq_array)-1):
-        if freq_array[i] <= freq_array[i+1]:
+        if freq_array[i] < freq_array[i+1]:
             ascending_counter += 1
             if ascending_counter == len(freq_array)-1:
                 change_rect_level_ascending()
-                # clear array, in order to call level function only once at a time
+                # clear array, in order to call change_level function only once at a time
                 freq_array.clear()
-        elif freq_array[i] >= freq_array[i+1]:
+        elif freq_array[i] > freq_array[i+1]:
             descending_counter += 1
             if descending_counter == len(freq_array)-1:
                 change_rect_level_descending()
-                # clear array, in order to call level function only once at a time
+                # clear array, in order to call change_level function only once at a time
                 freq_array.clear()
 
 
@@ -123,6 +75,10 @@ def change_rect_level_ascending():
     Rect.change_check(Rect.rectangles[checked_rect_index])
     Rect.change_check(Rect.rectangles[checked_rect_index+1])
 
+    # change for example PowerPoint-Slide to next one
+    keyboard.press(Key.right)
+    keyboard.release(Key.right)
+
 
 def change_rect_level_descending():
     checked_rect_index = Rect.get_index_of_checked()
@@ -132,6 +88,10 @@ def change_rect_level_descending():
 
     Rect.change_check(Rect.rectangles[checked_rect_index])
     Rect.change_check(Rect.rectangles[checked_rect_index-1])
+
+    # change for example PowerPoint-Slide to previous one
+    keyboard.press(Key.left)
+    keyboard.release(Key.left)
 
 
 # print info about audio devices
@@ -154,17 +114,12 @@ stream = p.open(format=FORMAT,
                 frames_per_buffer=CHUNK_SIZE,
                 input_device_index=input_device)
 
-# set up interactive plot
-fig = plt.figure()
-ax = plt.gca()
-line, = ax.plot(np.zeros(CHUNK_SIZE))
-ax.set_ylim(-30000, 30000)
 
-plt.ion()
-plt.show()
 
-kernel = signal.gaussian(20, 10)  # create a kernel
-kernel /= np.sum(kernel)  # normalize the kernel so it does not affect the signal's amplitude
+# from exercise notebook
+kernel = signal.gaussian(20, 10)
+kernel /= np.sum(kernel)
+
 
 # continuously capture and plot audio singal
 def read_audio_stream(dt):
@@ -173,34 +128,32 @@ def read_audio_stream(dt):
 
     # Convert audio data to numpy array
     data = np.frombuffer(data, dtype=np.int16)
-    data2 = np.convolve(data, kernel, 'same')  # apply the kernel to the signal
-    line.set_ydata(data2)
-    # print(f"data: {data}")
-    spectrum = np.abs(np.fft.fft(data2))
 
-    frequencies = np.fft.fftfreq(len(data2), 1 / CHUNK_SIZE)
+    # kernel, to remove noise of signal -> in order for "detection is robust against background noise"
+    data_noise_reduction = np.convolve(data, kernel, 'same')
 
+    # apply fft
+    spectrum = np.abs(np.fft.fft(data_noise_reduction))
+    frequencies = np.fft.fftfreq(len(data_noise_reduction), 1 / RATE)
+
+    # only positive frequencies
     mask = frequencies >= 0
 
+    # apply mask
     spectrum = spectrum[mask]
     frequencies = frequencies[mask]
-    # print(f"spectrum: {spectrum}")
-    # print(f"frequencies: {frequencies}")
 
+    # get main frequency
     main_freq_index = np.argmax(spectrum)
-    # print(f"main Index: {main_freq_index}")
     freq = frequencies[main_freq_index]
 
+    # add to frequency array
     fill_freq_array(freq)
-    print(freq_array)
-    check_whistle()
 
-    # Redraw plot
-    fig.canvas.draw()
-    fig.canvas.flush_events()
+    # check whether whistle frequency is ascending or descending
+    check_whistle()
 
 
 pyglet.clock.schedule_interval(read_audio_stream, 0.01)
-
 
 pyglet.app.run()
