@@ -1,6 +1,7 @@
 # Game:
 
 Train your voice. Try to reach the displayed frequency. The frequency of your current input is displayed in the game window.
+You can select the different frequencies of a tuned guitar with number keys (1-6) to retune your guitar or to check if your guitar is tuned.
 Q to Exit game.
 
 # Whistle Input:
